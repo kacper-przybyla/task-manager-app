@@ -1,0 +1,13 @@
+# Production overrides
+app:
+  debug: false
+  cors_origins:
+    - "https://yourdomain.com"
+
+database:
+  pool_size: 20
+  max_overflow: 40
+
+logging:
+  level: "WARNING"
+  format: "json"

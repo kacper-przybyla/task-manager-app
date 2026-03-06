@@ -1,0 +1,7 @@
+# Development overrides
+app:
+  debug: true
+
+logging:
+  level: "DEBUG"
+  format: "pretty"

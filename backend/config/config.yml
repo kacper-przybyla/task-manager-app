@@ -1,0 +1,18 @@
+# Default configuration
+app:
+  name: "Task Manager API"
+  version: "1.0.0"
+  debug: false
+  cors_origins:
+    - "http://localhost"
+    - "http://localhost:3000"
+
+database:
+  pool_size: 5
+  max_overflow: 10
+  pool_timeout: 30
+  pool_recycle: 3600
+
+logging:
+  level: "INFO"
+  format: "json"
