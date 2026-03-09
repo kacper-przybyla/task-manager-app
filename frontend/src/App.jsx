@@ -2,7 +2,57 @@ import React, { useState, useEffect } from 'react'
 
 const API_BASE = '/api'
 
-// ── TaskCard ─────────────────────────────────────────────────────────────────
+// ── Priority config ───────────────────────────────────────────────────────────
+
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 }
+
+const PRIORITY_BADGE = {
+  high: {
+    label: 'High',
+    classes: 'bg-red-100 text-red-700 border border-red-200',
+    dot: 'bg-red-500',
+  },
+  medium: {
+    label: 'Medium',
+    classes: 'bg-orange-100 text-orange-700 border border-orange-200',
+    dot: 'bg-orange-400',
+  },
+  low: {
+    label: 'Low',
+    classes: 'bg-gray-100 text-gray-500 border border-gray-200',
+    dot: 'bg-gray-400',
+  },
+}
+
+// ── PriorityBadge ─────────────────────────────────────────────────────────────
+
+function PriorityBadge({ priority }) {
+  const cfg = PRIORITY_BADGE[priority] ?? PRIORITY_BADGE.medium
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.classes}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+      {cfg.label}
+    </span>
+  )
+}
+
+// ── PrioritySelect ────────────────────────────────────────────────────────────
+
+function PrioritySelect({ value, onChange, className = '' }) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white ${className}`}
+    >
+      <option value="high">High priority</option>
+      <option value="medium">Medium priority</option>
+      <option value="low">Low priority</option>
+    </select>
+  )
+}
+
+// ── TaskCard ──────────────────────────────────────────────────────────────────
 
 function TaskCard({ task, onToggle, onEdit, onDelete }) {
   return (
@@ -26,13 +76,16 @@ function TaskCard({ task, onToggle, onEdit, onDelete }) {
 
       {/* Task content */}
       <div className="flex-1 min-w-0">
-        <h3
-          className={`font-medium ${
-            task.completed ? 'line-through text-gray-400' : 'text-gray-800'
-          }`}
-        >
-          {task.title}
-        </h3>
+        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+          <h3
+            className={`font-medium ${
+              task.completed ? 'line-through text-gray-400' : 'text-gray-800'
+            }`}
+          >
+            {task.title}
+          </h3>
+          <PriorityBadge priority={task.priority} />
+        </div>
         {task.description && (
           <p className="text-sm text-gray-500 mt-0.5 break-words">{task.description}</p>
         )}
@@ -76,13 +129,15 @@ function TaskCard({ task, onToggle, onEdit, onDelete }) {
 
 function App() {
   const [tasks, setTasks] = useState([])
-  const [newTask, setNewTask] = useState({ title: '', description: '' })
+  const [newTask, setNewTask] = useState({ title: '', description: '', priority: 'medium' })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [healthStatus, setHealthStatus] = useState(null)
-  const [editingTask, setEditingTask] = useState(null)   // task object being edited
-  const [deleteConfirm, setDeleteConfirm] = useState(null) // task id pending delete
+  const [editingTask, setEditingTask] = useState(null)
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [filterPriority, setFilterPriority] = useState(null) // null = All
+  const [sortByPriority, setSortByPriority] = useState(false)
 
   useEffect(() => {
     fetchTasks()
@@ -104,9 +159,7 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/tasks`)
       if (!res.ok) throw new Error('Failed to fetch tasks')
-      const data = await res.json()
-      // Incomplete tasks first, completed at the bottom
-      setTasks([...data].sort((a, b) => a.completed - b.completed))
+      setTasks(await res.json())
     } catch (err) {
       setError(err.message)
     } finally {
@@ -125,7 +178,7 @@ function App() {
         body: JSON.stringify(newTask),
       })
       if (!res.ok) throw new Error('Failed to create task')
-      setNewTask({ title: '', description: '' })
+      setNewTask({ title: '', description: '', priority: 'medium' })
       await fetchTasks()
     } catch (err) {
       setError(err.message)
@@ -154,6 +207,7 @@ function App() {
         body: JSON.stringify({
           title: editingTask.title,
           description: editingTask.description,
+          priority: editingTask.priority,
         }),
       })
       if (!res.ok) throw new Error('Failed to update task')
@@ -175,8 +229,26 @@ function App() {
     }
   }
 
-  const pendingTasks = tasks.filter((t) => !t.completed)
-  const doneTasks = tasks.filter((t) => t.completed)
+  // Apply filter + sort, then split into pending / done
+  const processedTasks = tasks
+    .filter((t) => filterPriority === null || t.priority === filterPriority)
+    .sort((a, b) => {
+      // Always keep completed at the bottom
+      if (a.completed !== b.completed) return a.completed - b.completed
+      // Within same completion group, optionally sort by priority
+      if (sortByPriority) return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
+      return 0
+    })
+
+  const pendingTasks = processedTasks.filter((t) => !t.completed)
+  const doneTasks = processedTasks.filter((t) => t.completed)
+
+  const filterButtons = [
+    { label: 'All', value: null },
+    { label: 'High', value: 'high' },
+    { label: 'Medium', value: 'medium' },
+    { label: 'Low', value: 'low' },
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -185,7 +257,7 @@ function App() {
         <div className="max-w-3xl mx-auto px-4 py-5 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Task Manager</h1>
-            <p className="text-blue-200 text-sm">v1.0.0</p>
+            <p className="text-blue-200 text-sm">v1.1.0</p>
           </div>
           {healthStatus && (
             <div className="text-right text-sm">
@@ -196,7 +268,7 @@ function App() {
                     : 'bg-red-500 text-white'
                 }`}
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-white inline-block"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-white inline-block" />
                 DB {healthStatus.database_status}
               </span>
               <p className="text-blue-200 mt-1 capitalize">{healthStatus.environment}</p>
@@ -215,10 +287,7 @@ function App() {
               </svg>
               {error}
             </div>
-            <button
-              onClick={() => setError(null)}
-              className="text-red-400 hover:text-red-600 ml-4 flex-shrink-0"
-            >
+            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-4">
               <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
@@ -245,40 +314,86 @@ function App() {
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
               rows={2}
             />
-            <button
-              type="submit"
-              disabled={submitting || !newTask.title.trim()}
-              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex items-center gap-2"
-            >
-              {submitting ? (
-                <>
-                  <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                  </svg>
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-                  </svg>
-                  Add Task
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-3">
+              <PrioritySelect
+                value={newTask.priority}
+                onChange={(val) => setNewTask({ ...newTask, priority: val })}
+              />
+              <button
+                type="submit"
+                disabled={submitting || !newTask.title.trim()}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex items-center gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                    </svg>
+                    Add Task
+                  </>
+                )}
+              </button>
+            </div>
           </form>
         </div>
 
-        {/* ── Stats bar ── */}
-        <div className="flex items-center gap-3 mb-4">
-          <h2 className="text-base font-semibold text-gray-700">Tasks</h2>
-          <span className="px-2.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-            {pendingTasks.length} pending
-          </span>
-          <span className="px-2.5 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-            {doneTasks.length} done
-          </span>
+        {/* ── Filter & sort bar ── */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          {/* Priority filter buttons */}
+          <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
+            {filterButtons.map(({ label, value }) => {
+              const active = filterPriority === value
+              let activeClass = 'bg-blue-600 text-white shadow-sm'
+              if (value === 'high') activeClass = 'bg-red-500 text-white shadow-sm'
+              if (value === 'medium') activeClass = 'bg-orange-400 text-white shadow-sm'
+              if (value === 'low') activeClass = 'bg-gray-400 text-white shadow-sm'
+
+              return (
+                <button
+                  key={label}
+                  onClick={() => setFilterPriority(value)}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 ${
+                    active ? activeClass : 'text-gray-500 hover:bg-gray-100'
+                  }`}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Sort by priority toggle */}
+          <button
+            onClick={() => setSortByPriority((v) => !v)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-150 ${
+              sortByPriority
+                ? 'bg-blue-50 border-blue-300 text-blue-700'
+                : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+            }`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M3 3a1 1 0 000 2h11a1 1 0 100-2H3zM3 7a1 1 0 000 2h7a1 1 0 100-2H3zM3 11a1 1 0 100 2h4a1 1 0 100-2H3zM15 8a1 1 0 10-2 0v5.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L15 13.586V8z" />
+            </svg>
+            Sort by priority
+          </button>
+
+          {/* Stats */}
+          <div className="ml-auto flex gap-2">
+            <span className="px-2.5 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+              {pendingTasks.length} pending
+            </span>
+            <span className="px-2.5 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+              {doneTasks.length} done
+            </span>
+          </div>
         </div>
 
         {/* ── Task list ── */}
@@ -290,24 +405,22 @@ function App() {
             </svg>
             <p className="text-sm">Loading tasks...</p>
           </div>
-        ) : tasks.length === 0 ? (
+        ) : processedTasks.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
-            <p className="font-medium text-gray-500">No tasks yet</p>
-            <p className="text-sm mt-1">Create your first task above!</p>
+            <p className="font-medium text-gray-500">
+              {filterPriority ? `No ${filterPriority} priority tasks` : 'No tasks yet'}
+            </p>
+            <p className="text-sm mt-1">
+              {filterPriority ? 'Try a different filter.' : 'Create your first task above!'}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
             {pendingTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onToggle={toggleTask}
-                onEdit={setEditingTask}
-                onDelete={setDeleteConfirm}
-              />
+              <TaskCard key={task.id} task={task} onToggle={toggleTask} onEdit={setEditingTask} onDelete={setDeleteConfirm} />
             ))}
 
             {pendingTasks.length > 0 && doneTasks.length > 0 && (
@@ -319,13 +432,7 @@ function App() {
             )}
 
             {doneTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onToggle={toggleTask}
-                onEdit={setEditingTask}
-                onDelete={setDeleteConfirm}
-              />
+              <TaskCard key={task.id} task={task} onToggle={toggleTask} onEdit={setEditingTask} onDelete={setDeleteConfirm} />
             ))}
           </div>
         )}
@@ -351,6 +458,11 @@ function App() {
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
                 placeholder="Description (optional)"
                 rows={3}
+              />
+              <PrioritySelect
+                value={editingTask.priority}
+                onChange={(val) => setEditingTask({ ...editingTask, priority: val })}
+                className="w-full"
               />
               <div className="flex gap-3 pt-1">
                 <button

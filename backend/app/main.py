@@ -1,9 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, field_validator
+from typing import Optional, List, Literal
 import logging
 import sys
 
@@ -38,15 +38,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Valid priority values
+VALID_PRIORITIES = {"low", "medium", "high"}
+
 # Pydantic models for request/response
 class TaskCreate(BaseModel):
     title: str
     description: Optional[str] = None
+    priority: Literal["low", "medium", "high"] = "medium"
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     completed: Optional[bool] = None
+    priority: Optional[Literal["low", "medium", "high"]] = None
 
 
 # Health check endpoint
@@ -70,21 +75,28 @@ async def health_check(db: Session = Depends(get_db)):
 
 # Task endpoints
 @app.get("/tasks", response_model=List[dict])
-async def get_tasks(db: Session = Depends(get_db)):
-    """Get all tasks"""
-    logger.info("Fetching all tasks")
-    tasks = db.query(Task).order_by(Task.created_at.desc()).all()
+async def get_tasks(
+    priority: Optional[Literal["low", "medium", "high"]] = Query(default=None),
+    db: Session = Depends(get_db)
+):
+    """Get all tasks, optionally filtered by priority"""
+    logger.info(f"Fetching tasks (priority filter: {priority})")
+    query = db.query(Task)
+    if priority is not None:
+        query = query.filter(Task.priority == priority)
+    tasks = query.order_by(Task.created_at.desc()).all()
     return [task.to_dict() for task in tasks]
 
 
 @app.post("/tasks", response_model=dict, status_code=201)
 async def create_task(task_data: TaskCreate, db: Session = Depends(get_db)):
     """Create a new task"""
-    logger.info(f"Creating task: {task_data.title}")
+    logger.info(f"Creating task: {task_data.title} (priority: {task_data.priority})")
 
     task = Task(
         title=task_data.title,
-        description=task_data.description
+        description=task_data.description,
+        priority=task_data.priority,
     )
     db.add(task)
     db.commit()
@@ -104,7 +116,7 @@ async def get_task(task_id: int, db: Session = Depends(get_db)):
 
 @app.put("/tasks/{task_id}", response_model=dict)
 async def replace_task(task_id: int, task_data: TaskCreate, db: Session = Depends(get_db)):
-    """Full replacement of a task (title required, description optional)"""
+    """Full replacement of a task (title required, description and priority optional)"""
     logger.info(f"Replacing task {task_id}")
 
     task = db.query(Task).filter(Task.id == task_id).first()
@@ -113,6 +125,7 @@ async def replace_task(task_id: int, task_data: TaskCreate, db: Session = Depend
 
     task.title = task_data.title
     task.description = task_data.description
+    task.priority = task_data.priority
 
     db.commit()
     db.refresh(task)
@@ -135,6 +148,8 @@ async def update_task(task_id: int, task_data: TaskUpdate, db: Session = Depends
         task.description = task_data.description
     if task_data.completed is not None:
         task.completed = task_data.completed
+    if task_data.priority is not None:
+        task.priority = task_data.priority
 
     db.commit()
     db.refresh(task)
