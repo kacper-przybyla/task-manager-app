@@ -1,0 +1,32 @@
+services:
+  database:
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    restart: no
+  backend:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      ENVIRONMENT: ${ENVIRONMENT}
+    volumes:
+      - ./backend/app:/app/app:ro
+    ports:
+      - "8000:8000"
+    restart: no
+
+  frontend:
+    volumes:
+      - ./frontend/src:/app/src:ro
+    ports:
+      - "3000:80"
+    restart: no
+
+  proxy:
+    restart: no

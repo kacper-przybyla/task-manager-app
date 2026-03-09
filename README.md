@@ -16,3 +16,21 @@ Visit: http://localhost
 
 ## Versions
 - v1.0.0 - Base CRUD operations
+
+## Environments
+
+### Development
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.dev up -d
+```
+- Hot reload enabled
+- All ports exposed (8000, 5432, 3000, 80)
+- Database: taskdb_dev
+
+### Production
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
+```
+- Auto-restart enabled
+- Only port 80 exposed
+- Database: taskdb_prod
