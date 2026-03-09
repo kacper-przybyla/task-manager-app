@@ -34,3 +34,18 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.
 - Auto-restart enabled
 - Only port 80 exposed
 - Database: taskdb_prod
+
+## Production Configuration
+
+### Resource Limits
+- Database: 0.5 CPU, 1GB RAM
+- Backend: 0.5 CPU, 512MB RAM  
+- Frontend: 0.25 CPU, 256MB RAM
+- Proxy: 0.25 CPU, 256MB RAM
+
+Total: 1.5 CPU cores, 2GB RAM
+
+### Log Rotation
+- Max 10MB per log file
+- Keep 3 files per container
+- Max 30MB logs per container
