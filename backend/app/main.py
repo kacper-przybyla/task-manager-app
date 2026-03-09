@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, func
 from pydantic import BaseModel, field_validator
 from typing import Optional, List, Literal
 import logging
@@ -42,16 +42,20 @@ app.add_middleware(
 VALID_PRIORITIES = {"low", "medium", "high"}
 
 # Pydantic models for request/response
+CategoryType = Optional[Literal["work", "personal", "shopping", "health", "other"]]
+
 class TaskCreate(BaseModel):
     title: str
     description: Optional[str] = None
     priority: Literal["low", "medium", "high"] = "medium"
+    category: CategoryType = None
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     completed: Optional[bool] = None
     priority: Optional[Literal["low", "medium", "high"]] = None
+    category: CategoryType = None
 
 
 # Health check endpoint
@@ -73,17 +77,42 @@ async def health_check(db: Session = Depends(get_db)):
     }
 
 
+# Stats endpoints
+@app.get("/stats/categories", response_model=List[dict])
+async def get_category_stats(db: Session = Depends(get_db)):
+    """Get task counts grouped by category"""
+    total_rows = (
+        db.query(Task.category, func.count(Task.id).label("total"))
+        .group_by(Task.category)
+        .all()
+    )
+    done_rows = (
+        db.query(Task.category, func.count(Task.id).label("done"))
+        .filter(Task.completed == True)
+        .group_by(Task.category)
+        .all()
+    )
+    done_map = {r.category: r.done for r in done_rows}
+    return [
+        {"category": r.category, "total": r.total, "completed": done_map.get(r.category, 0)}
+        for r in total_rows
+    ]
+
+
 # Task endpoints
 @app.get("/tasks", response_model=List[dict])
 async def get_tasks(
     priority: Optional[Literal["low", "medium", "high"]] = Query(default=None),
+    category: CategoryType = Query(default=None),
     db: Session = Depends(get_db)
 ):
-    """Get all tasks, optionally filtered by priority"""
-    logger.info(f"Fetching tasks (priority filter: {priority})")
+    """Get all tasks, optionally filtered by priority and/or category"""
+    logger.info(f"Fetching tasks (priority filter: {priority}, category filter: {category})")
     query = db.query(Task)
     if priority is not None:
         query = query.filter(Task.priority == priority)
+    if category is not None:
+        query = query.filter(Task.category == category)
     tasks = query.order_by(Task.created_at.desc()).all()
     return [task.to_dict() for task in tasks]
 
@@ -97,6 +126,7 @@ async def create_task(task_data: TaskCreate, db: Session = Depends(get_db)):
         title=task_data.title,
         description=task_data.description,
         priority=task_data.priority,
+        category=task_data.category,
     )
     db.add(task)
     db.commit()
@@ -126,6 +156,7 @@ async def replace_task(task_id: int, task_data: TaskCreate, db: Session = Depend
     task.title = task_data.title
     task.description = task_data.description
     task.priority = task_data.priority
+    task.category = task_data.category
 
     db.commit()
     db.refresh(task)
@@ -150,6 +181,8 @@ async def update_task(task_id: int, task_data: TaskUpdate, db: Session = Depends
         task.completed = task_data.completed
     if task_data.priority is not None:
         task.priority = task_data.priority
+    if 'category' in task_data.model_fields_set:
+        task.category = task_data.category
 
     db.commit()
     db.refresh(task)

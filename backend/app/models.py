@@ -10,6 +10,7 @@ class Task(Base):
     description = Column(Text, nullable=True)
     completed = Column(Boolean, default=False)
     priority = Column(String(20), default="medium", nullable=False)
+    category = Column(String(50), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -20,6 +21,7 @@ class Task(Base):
             "description": self.description,
             "completed": self.completed,
             "priority": self.priority,
+            "category": self.category,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
