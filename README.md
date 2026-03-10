@@ -14,8 +14,13 @@ docker compose up -d --build
 ```
 Visit: http://localhost
 
-## Versions
+## Version history
 - v1.0.0 - Base CRUD operations
+- v1.1.0 - Add task priorities
+- v1.2.0 - Add task categories feature
+- v1.2.1 - Multi-environment Docker setup - add dev and prod environments
+- v1.2.2 - Production resource management and log rotation (Uses v1.2.2 Docker Images)
+- v1.2.3 - Publish images to Docker Hub registry (Uses v1.2.2 Docker Images)
 
 ## Environments
 
@@ -49,3 +54,25 @@ Total: 1.5 CPU cores, 2GB RAM
 - Max 10MB per log file
 - Keep 3 files per container
 - Max 30MB logs per container
+
+## Docker Images
+
+Published on Docker Hub:
+- Backend: `kacperprzybyla/task-backend`
+- Frontend: `kacperprzybyla/task-frontend`
+- Proxy: `kacperprzybyla/task-proxy`
+
+### Building and Publishing
+```bash
+# Build and push new version
+./scripts/build-and-push.sh 1.2.3
+
+# Update docker-compose.prod.yml with new version
+# Then deploy
+```
+
+### Deployment
+```bash
+# Production (pulls pre-built images)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
+```
