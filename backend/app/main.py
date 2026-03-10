@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text, func
 from pydantic import BaseModel, field_validator
 from typing import Optional, List, Literal
+from datetime import datetime
 import logging
 import sys
 
@@ -49,6 +50,7 @@ class TaskCreate(BaseModel):
     description: Optional[str] = None
     priority: Literal["low", "medium", "high"] = "medium"
     category: CategoryType = None
+    due_date: Optional[datetime] = None
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
@@ -56,6 +58,7 @@ class TaskUpdate(BaseModel):
     completed: Optional[bool] = None
     priority: Optional[Literal["low", "medium", "high"]] = None
     category: CategoryType = None
+    due_date: Optional[datetime] = None
 
 
 # Health check endpoint
@@ -99,20 +102,34 @@ async def get_category_stats(db: Session = Depends(get_db)):
     ]
 
 
+@app.get("/stats/overdue", response_model=dict)
+async def get_overdue_stats(db: Session = Depends(get_db)):
+    """Get count of overdue tasks (due_date < NOW and not completed)"""
+    count = (
+        db.query(func.count(Task.id))
+        .filter(Task.due_date < datetime.utcnow(), Task.completed == False)
+        .scalar()
+    )
+    return {"overdue_count": count}
+
+
 # Task endpoints
 @app.get("/tasks", response_model=List[dict])
 async def get_tasks(
     priority: Optional[Literal["low", "medium", "high"]] = Query(default=None),
     category: CategoryType = Query(default=None),
+    overdue: Optional[bool] = Query(default=None),
     db: Session = Depends(get_db)
 ):
-    """Get all tasks, optionally filtered by priority and/or category"""
-    logger.info(f"Fetching tasks (priority filter: {priority}, category filter: {category})")
+    """Get all tasks, optionally filtered by priority, category, and/or overdue status"""
+    logger.info(f"Fetching tasks (priority: {priority}, category: {category}, overdue: {overdue})")
     query = db.query(Task)
     if priority is not None:
         query = query.filter(Task.priority == priority)
     if category is not None:
         query = query.filter(Task.category == category)
+    if overdue is True:
+        query = query.filter(Task.due_date < datetime.utcnow(), Task.completed == False)
     tasks = query.order_by(Task.created_at.desc()).all()
     return [task.to_dict() for task in tasks]
 
@@ -127,6 +144,7 @@ async def create_task(task_data: TaskCreate, db: Session = Depends(get_db)):
         description=task_data.description,
         priority=task_data.priority,
         category=task_data.category,
+        due_date=task_data.due_date,
     )
     db.add(task)
     db.commit()
@@ -157,6 +175,7 @@ async def replace_task(task_id: int, task_data: TaskCreate, db: Session = Depend
     task.description = task_data.description
     task.priority = task_data.priority
     task.category = task_data.category
+    task.due_date = task_data.due_date
 
     db.commit()
     db.refresh(task)
@@ -183,6 +202,8 @@ async def update_task(task_id: int, task_data: TaskUpdate, db: Session = Depends
         task.priority = task_data.priority
     if 'category' in task_data.model_fields_set:
         task.category = task_data.category
+    if 'due_date' in task_data.model_fields_set:
+        task.due_date = task_data.due_date
 
     db.commit()
     db.refresh(task)

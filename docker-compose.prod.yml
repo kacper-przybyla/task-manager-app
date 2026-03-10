@@ -19,7 +19,7 @@ services:
         max-size: "10m"
         max-file: "3"
   backend:
-    image: kacperprzybyla/task-backend:1.2.2
+    image: kacperprzybyla/task-backend:1.3.0
     environment:
       DATABASE_URL: ${DATABASE_URL}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -42,7 +42,7 @@ services:
         max-file: "3"
 
   frontend:
-    image: kacperprzybyla/task-frontend:1.2.2
+    image: kacperprzybyla/task-frontend:1.3.0
     restart: unless-stopped
     deploy:
       resources:
@@ -59,7 +59,7 @@ services:
         max-file: "3"
 
   proxy:
-    image: kacperprzybyla/task-proxy:1.2.2
+    image: kacperprzybyla/task-proxy:1.3.0
     restart: unless-stopped
     deploy:
       resources:

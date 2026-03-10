@@ -8,6 +8,29 @@ A production-ready 3-tier task management system built with React, FastAPI, and 
 - **Database:** PostgreSQL 14
 - **Proxy:** Nginx reverse proxy
 
+## AI Assistance
+
+Parts of the application layer were developed with assistance from **Claude Code** using prompt-based code generation. This includes:
+
+* React frontend code
+* FastAPI backend code (API routes, application logic, and data models)
+* Nginx configuration
+* PostgreSQL scripts
+
+All **Docker and infrastructure-related work** was implemented manually, including:
+
+* Dockerfiles and multi-stage builds
+* Docker Compose architecture (dev and production environments)
+* Multi-environment configuration using override files
+* Container resource limits and runtime configuration
+* Log rotation setup
+* Image versioning and tagging strategy
+* Docker Hub publishing workflow
+* Deployment workflow using pre-built images
+
+The goal of this project was to practice **DevOps and containerization concepts**, while also demonstrating the ability to effectively use modern AI-assisted development tools as part of the development workflow.
+
+
 ## Quick Start
 ```bash
 docker compose up -d --build
@@ -21,6 +44,7 @@ Visit: http://localhost
 - v1.2.1 - Multi-environment Docker setup - add dev and prod environments
 - v1.2.2 - Production resource management and log rotation (Uses v1.2.2 Docker Images)
 - v1.2.3 - Publish images to Docker Hub registry (Uses v1.2.2 Docker Images)
+- v1.3.0 - Add due date feature (Uses v1.3.0 Docker Images)
 
 ## Environments
 
