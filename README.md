@@ -33,7 +33,7 @@ The goal of this project was to practice **DevOps and containerization concepts*
 
 ## Quick Start
 ```bash
-docker compose up -d --build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.dev up -d
 ```
 Visit: http://localhost
 
