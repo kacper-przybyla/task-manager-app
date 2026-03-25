@@ -45,6 +45,7 @@ Visit: http://localhost
 - v1.2.2 - Production resource management and log rotation (Uses v1.2.2 Docker Images)
 - v1.2.3 - Publish images to Docker Hub registry (Uses v1.2.2 Docker Images)
 - v1.3.0 - Add due date feature (Uses v1.3.0 Docker Images)
+- v1.3.1 - Add migrations to init (Uses v1.3.0 Docker Images)
 
 ## Environments
 
