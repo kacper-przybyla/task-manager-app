@@ -1,0 +1,5 @@
+# Test dependencies for the FastAPI backend
+# Install alongside requirements.txt:
+#   pip install -r requirements.txt -r requirements-test.txt
+pytest>=7.4
+httpx==0.23.3
