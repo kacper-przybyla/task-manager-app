@@ -16,6 +16,7 @@ Parts of the application layer were developed with assistance from **Claude Code
 * FastAPI backend code (API routes, application logic, and data models)
 * Nginx configuration
 * PostgreSQL scripts
+* Backend API tests
 
 All **Docker and infrastructure-related work** was implemented manually, including:
 
@@ -25,8 +26,8 @@ All **Docker and infrastructure-related work** was implemented manually, includi
 * Container resource limits and runtime configuration
 * Log rotation setup
 * Image versioning and tagging strategy
-* Docker Hub publishing workflow
-* Deployment workflow using pre-built images
+* Docker Hub publishing workflow (replaced by automated CI/CD pipeline)
+* GitHub Actions CI pipeline with automated testing, image builds, and GHCR publishing
 
 The goal of this project was to practice **DevOps and containerization concepts**, while also demonstrating the ability to effectively use modern AI-assisted development tools as part of the development workflow.
 
@@ -46,6 +47,7 @@ Visit: http://localhost
 - v1.2.3 - Publish images to Docker Hub registry (Uses v1.2.2 Docker Images)
 - v1.3.0 - Add due date feature (Uses v1.3.0 Docker Images)
 - v1.3.1 - Add migrations to init (Uses v1.3.0 Docker Images)
+- v1.3.2 - Add GitHub Actions CI pipeline with automated testing and GHCR publishing (Uses latest Docker Images)
 
 ## Environments
 
@@ -82,19 +84,21 @@ Total: 1.5 CPU cores, 2GB RAM
 
 ## Docker Images
 
-Published on Docker Hub:
-- Backend: `kacperprzybyla/task-backend`
-- Frontend: `kacperprzybyla/task-frontend`
-- Proxy: `kacperprzybyla/task-proxy`
+Images are automatically built and published to GitHub Container Registry (GHCR) 
+by the CI pipeline on every push to `main`.
 
-### Building and Publishing
-```bash
-# Build and push new version
-./scripts/build-and-push.sh 1.2.3
+- Backend: `ghcr.io/kacper-przybyla/task-manager-backend`
+- Frontend: `ghcr.io/kacper-przybyla/task-manager-frontend`
+- Proxy: `ghcr.io/kacper-przybyla/task-manager-proxy`
 
-# Update docker-compose.prod.yml with new version
-# Then deploy
-```
+Images are tagged with both `latest` and the short commit SHA for traceability.
+
+### CI Pipeline
+Every push to `main` automatically:
+1. Runs 13 backend API tests against a mocked database
+2. Builds all three Docker images
+3. Smoke tests the backend against a real PostgreSQL instance
+4. Pushes images to GHCR
 
 ### Deployment
 ```bash
