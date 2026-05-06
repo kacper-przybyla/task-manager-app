@@ -437,7 +437,7 @@ function App() {
       <header className="bg-blue-600 text-white shadow-lg">
         <div className="max-w-3xl mx-auto px-4 py-5 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Task Manager</h1>
+            <h1 className="text-2xl font-bold">Task Managerrrr</h1>
             <p className="text-blue-200 text-sm">v1.3.0</p>
           </div>
           {healthStatus && (
