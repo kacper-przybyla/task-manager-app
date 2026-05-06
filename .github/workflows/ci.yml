@@ -135,11 +135,12 @@ jobs:
     steps:
       - name: Trigger CD workflow and send SHA 
         run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
           curl -X POST \
             -H "Authorization: token ${{ secrets.DEPLOY_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/kacper-przybyla/task-manager-deployment/dispatches \
-            -d '{"event_type":"deploy","client_payload":{"sha":"${{ github.sha }}"}}'
+            -d "{\"event_type\":\"deploy\",\"client_payload\":{\"sha\":\"$SHORT_SHA\"}}"
 
   notify:
     runs-on: ubuntu-latest
