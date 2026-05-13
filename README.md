@@ -110,7 +110,7 @@ On git tag push (v*): same flow, images get 3 tags:
 **CI pipeline — all jobs green**
 ![CI Pipeline](docs/ci-pipeline.png)
 
-**build-and-push job — smoke test steps**
+**build-and-push job — all steps**
 ![CI Build Detail](docs/ci-build-detail.png)
 
 **Live application**
