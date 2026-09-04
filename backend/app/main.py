@@ -5,6 +5,7 @@ from sqlalchemy import text, func
 from pydantic import BaseModel, field_validator
 from typing import Optional, List, Literal
 from datetime import datetime
+from prometheus_fastapi_instrumentator import Instrumentator
 import logging
 import sys
 
@@ -41,6 +42,9 @@ app.add_middleware(
 
 # Valid priority values
 VALID_PRIORITIES = {"low", "medium", "high"}
+
+# Expose basic /metrics for Prometheus
+Instrumentator().instrument(app).expose(app)
 
 # Pydantic models for request/response
 CategoryType = Optional[Literal["work", "personal", "shopping", "health", "other"]]
